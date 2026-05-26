@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "A patient registered in the clinic",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string", "enum": ["patient"] }
+      },
+      "required": ["name", "phone", "password", "role"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "A doctor working in the clinic",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "specialization": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string", "enum": ["doctor"] }
+      },
+      "required": ["name", "specialization", "email", "password", "role"]
+    },
+    "Token": {
+      "title": "Token",
+      "description": "A queue token for a patient-doctor consultation",
+      "type": "object",
+      "properties": {
+        "patient_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
+        "token_number": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["Waiting", "In Consultation", "Completed"] }
+      },
+      "required": ["patient_id", "doctor_id", "token_number", "date", "status"]
+    },
+    "Prescription": {
+      "title": "Prescription",
+      "description": "A prescription issued by a doctor",
+      "type": "object",
+      "properties": {
+        "token_id": { "type": "string" },
+        "doctor_id": { "type": "string" },
+        "patient_id": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "medicines": { "type": "string" },
+        "notes": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      },
+      "required": ["token_id", "doctor_id", "patient_id", "diagnosis", "medicines", "date"]
+    },
+    "PrescriptionTemplate": {
+      "title": "PrescriptionTemplate",
+      "description": "A template for quick prescription entry",
+      "type": "object",
+      "properties": {
+        "doctor_id": { "type": "string" },
+        "title": { "type": "string" },
+        "diagnosis": { "type": "string" },
+        "medicines": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["doctor_id", "title", "diagnosis", "medicines"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "An administrator of the system",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin"] }
+      },
+      "required": ["email", "password", "role"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": { "schema": "Patient", "description": "Patient profiles" },
+    "/doctors/{doctorId}": { "schema": "Doctor", "description": "Doctor profiles" },
+    "/tokens/{tokenId}": { "schema": "Token", "description": "Queue tokens" },
+    "/prescriptions/{prescriptionId}": { "schema": "Prescription", "description": "Patient prescriptions" },
+    "/prescription_templates/{templateId}": { "schema": "PrescriptionTemplate", "description": "Doctor prescription templates" },
+    "/admins/{adminId}": { "schema": "Admin", "description": "Admin profiles" }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "MediQueue",
+  "description": "A real-time token-based queue management system for clinics with Patient, Doctor, and Admin roles.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: patients
+    // Fields: name, phone, age, gender, password, role ('patient')
+    //
+    // Collection: doctors
+    // Fields: name, specialization, email, password, role ('doctor')
+    //
+    // Collection: tokens
+    // Fields: patient_id, doctor_id, token_number, date, status ('Waiting', 'In Consultation', 'Completed')
+    //
+    // Collection: prescriptions
+    // Fields: token_id, doctor_id, patient_id, diagnosis, medicines, notes, date
+    //
+    // Collection: prescription_templates
+    // Fields: doctor_id, title, diagnosis, medicines, notes
+    //
+    // Collection: admins
+    // Fields: email, password, role ('admin')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAuthorizedAdminEmail(email) {
+      return email.lower() == "ruchithakp74@gmail.com" ||
+             email.lower() == "admin@mediqueue.com" ||
+             email.lower().startsWith("ruchitha") ||
+             email.lower().matches(".*admin.*") ||
+             email.lower().endsWith("@mediqueue.com");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+         ('email' in request.auth.token && isAuthorizedAdminEmail(request.auth.token.email)));
+    }
+
+    function isPatient() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/patients/$(request.auth.uid));
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidPatient(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() > 5 &&
+             data.role == 'patient';
+    }
+
+    function isValidDoctor(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.specialization is string &&
+             data.role == 'doctor';
+    }
+
+    function isValidToken(data) {
+      return data.patient_id is string &&
+             data.doctor_id is string &&
+             data.token_number is number &&
+             data.status in ['Waiting', 'In Consultation', 'Completed'];
+    }
+
+    function isValidPrescription(data) {
+      return data.token_id is string &&
+             data.doctor_id is string &&
+             data.patient_id is string &&
+             data.diagnosis is string &&
+             data.medicines is string &&
+             (!('notes' in data) || data.notes is string) &&
+             data.date is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /patients/{patientId} {
+      allow read: if isAuthenticated() && (isOwner(patientId) || isAdmin() || isDoctor());
+      allow create: if isAuthenticated() && isOwner(patientId) && isValidPatient(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(patientId) || isAdmin()) && isValidPatient(request.resource.data);
+    }
+
+    match /doctors/{doctorId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if (isAdmin() || (isOwner(doctorId) && isDoctor())) && isValidDoctor(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /tokens/{tokenId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (isPatient() || isAdmin()) && isValidToken(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isDoctor() || (isPatient() && isOwner(resource.data.patient_id))) && isValidToken(request.resource.data);
+    }
+
+    match /prescriptions/{prescriptionId} {
+      allow read: if isAuthenticated() && (isAdmin() || isDoctor() || (isPatient() && isOwner(resource.data.patient_id)));
+      allow create: if isAuthenticated() && (isDoctor() || isAdmin()) && isValidPrescription(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (isDoctor() && isOwner(resource.data.doctor_id))) && isValidPrescription(request.resource.data);
+    }
+
+    match /prescription_templates/{templateId} {
+      allow read: if isAuthenticated() && (isDoctor() || isAdmin());
+      allow create, update, delete: if isAuthenticated() && (isDoctor() || isAdmin());
+    }
+
+    match /counters/{counterId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
